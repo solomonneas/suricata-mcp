@@ -9,30 +9,58 @@ function sendCommand(
   args?: Record<string, string>,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (fn: () => void) => {
+      if (!settled) {
+        settled = true;
+        fn();
+      }
+    };
+
     const socket = createConnection(socketPath, () => {
-      // Suricata expects JSON commands on its Unix socket
-      const cmd = args
-        ? JSON.stringify({ command, arguments: args })
-        : JSON.stringify({ command });
-      socket.write(cmd);
+      // Suricata Unix socket protocol requires version negotiation first
+      socket.write(JSON.stringify({ version: "0.2" }));
     });
 
+    let phase: "version" | "command" = "version";
     let data = "";
+
     socket.on("data", (chunk) => {
       data += chunk.toString();
+
+      // Try to parse accumulated data as JSON
+      try {
+        const parsed = JSON.parse(data);
+
+        if (phase === "version") {
+          // Version ack received, now send the actual command
+          phase = "command";
+          data = "";
+          const cmd = args
+            ? JSON.stringify({ command, arguments: args })
+            : JSON.stringify({ command });
+          socket.write(cmd);
+        } else {
+          // Command response received, close and resolve
+          socket.destroy();
+          finish(() => resolve(JSON.stringify(parsed)));
+        }
+      } catch {
+        // Incomplete JSON, keep accumulating
+      }
     });
 
     socket.on("end", () => {
-      resolve(data);
+      finish(() => resolve(data));
     });
 
     socket.on("error", (err) => {
-      reject(new Error(`Socket error: ${err.message}`));
+      finish(() => reject(new Error(`Socket error: ${err.message}`)));
     });
 
     socket.setTimeout(10000, () => {
       socket.destroy();
-      reject(new Error("Socket command timed out"));
+      finish(() => reject(new Error("Socket command timed out")));
     });
   });
 }

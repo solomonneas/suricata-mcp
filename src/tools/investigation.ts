@@ -147,14 +147,14 @@ export function registerInvestigationTools(
           };
         }
 
-        const ipPairs = new Set(alerts.map((a) => `${a.src_ip}:${a.dest_ip}`));
+        const ipPairs = new Set(alerts.map((a) => `${a.src_ip}||${a.dest_ip}`));
         const relatedFlows: FlowEvent[] = [];
         const relatedHttp: HttpEvent[] = [];
         const relatedDns: DnsEvent[] = [];
         const relatedTls: TlsEvent[] = [];
 
         for (const pair of ipPairs) {
-          const [srcIp, dstIp] = pair.split(":");
+          const [srcIp, dstIp] = pair.split("||");
           const pairFilter = (event: { src_ip?: string; dest_ip?: string; timestamp: string }) =>
             event.src_ip === srcIp &&
             event.dest_ip === dstIp &&
