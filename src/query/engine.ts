@@ -50,7 +50,7 @@ export class QueryEngine {
       maxEvents?: number;
     },
   ): Promise<T[]> {
-    const cap = options?.maxEvents ?? 500000;
+    const cap = options?.maxEvents ?? 100000;
     const files = await findEveFiles(
       this.config.eveArchiveDir,
       this.config.evePath,
