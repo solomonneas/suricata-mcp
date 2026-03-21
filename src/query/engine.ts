@@ -47,8 +47,10 @@ export class QueryEngine {
     filter: (event: T) => boolean,
     options?: {
       timeRange?: TimeRange;
+      maxEvents?: number;
     },
   ): Promise<T[]> {
+    const cap = options?.maxEvents ?? 500000;
     const files = await findEveFiles(
       this.config.eveArchiveDir,
       this.config.evePath,
@@ -57,6 +59,7 @@ export class QueryEngine {
     const events = await parseEveFiles(files, {
       eventTypes,
       timeRange: options?.timeRange,
+      maxEvents: cap,
     });
 
     return events.filter((e) => filter(e as T)) as T[];
