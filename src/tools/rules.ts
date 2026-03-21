@@ -1,9 +1,15 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { readFile, writeFile, appendFile } from "node:fs/promises";
+import { join } from "node:path";
+import { exec as execCb } from "node:child_process";
+import { promisify } from "node:util";
 import type { SuricataConfig } from "../config.js";
 import { loadAllRules } from "../parser/rules.js";
 import { matchesPartial } from "../query/filters.js";
 import { aggregate } from "../query/aggregation.js";
+
+const execAsync = promisify(execCb);
 
 export function registerRuleTools(
   server: McpServer,
@@ -99,6 +105,138 @@ export function registerRuleTools(
           content: [{ type: "text" as const, text: `Error getting rule stats: ${error}` }],
           isError: true,
         };
+      }
+    },
+  );
+
+  server.tool(
+    "suricata_create_rule",
+    "Create a custom Suricata rule and append it to local.rules",
+    {
+      rule: z.string().describe("Complete Suricata rule string (e.g., alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:\"...\"; sid:...; rev:1;))"),
+    },
+    async (args) => {
+      try {
+        if (!config.rulesDir) {
+          return { content: [{ type: "text" as const, text: "Rules directory not configured. Set SURICATA_RULES_DIR." }], isError: true };
+        }
+
+        // Basic validation
+        const rulePattern = /^(alert|drop|pass|reject)\s+\S+\s+\S+\s+\S+\s+(->|<>)\s+\S+\s+\S+\s*\(.+\)\s*$/;
+        if (!rulePattern.test(args.rule.trim())) {
+          return { content: [{ type: "text" as const, text: "Invalid rule format. Must be: action proto src srcport -> dst dstport (options;)" }], isError: true };
+        }
+
+        // Extract SID for validation
+        const sidMatch = /sid\s*:\s*(\d+)/.exec(args.rule);
+        if (!sidMatch) {
+          return { content: [{ type: "text" as const, text: "Rule must contain a sid option." }], isError: true };
+        }
+        const sid = parseInt(sidMatch[1], 10);
+
+        const localRulesPath = join(config.rulesDir, "local.rules");
+        await appendFile(localRulesPath, args.rule.trim() + "\n");
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              status: "created",
+              sid,
+              file: "local.rules",
+              rule: args.rule.trim(),
+              note: "Run suricata_reload_rules_docker to activate this rule.",
+            }, null, 2),
+          }],
+        };
+      } catch (error) {
+        return { content: [{ type: "text" as const, text: `Error creating rule: ${error}` }], isError: true };
+      }
+    },
+  );
+
+  server.tool(
+    "suricata_toggle_rule",
+    "Enable or disable a Suricata rule by SID in local.rules",
+    {
+      sid: z.number().describe("Rule SID to toggle"),
+      enable: z.boolean().describe("true to enable, false to disable"),
+    },
+    async (args) => {
+      try {
+        if (!config.rulesDir) {
+          return { content: [{ type: "text" as const, text: "Rules directory not configured. Set SURICATA_RULES_DIR." }], isError: true };
+        }
+
+        const localRulesPath = join(config.rulesDir, "local.rules");
+        let content: string;
+        try {
+          content = await readFile(localRulesPath, "utf-8");
+        } catch {
+          return { content: [{ type: "text" as const, text: "local.rules not found. Create a rule first." }], isError: true };
+        }
+
+        const lines = content.split("\n");
+        let found = false;
+
+        for (let i = 0; i < lines.length; i++) {
+          const sidMatch = new RegExp(`sid\\s*:\\s*${args.sid}\\b`).exec(lines[i]);
+          if (!sidMatch) continue;
+
+          found = true;
+          if (args.enable) {
+            lines[i] = lines[i].replace(/^#\s*/, "");
+          } else {
+            if (!lines[i].startsWith("#")) {
+              lines[i] = "# " + lines[i];
+            }
+          }
+        }
+
+        if (!found) {
+          return { content: [{ type: "text" as const, text: `Rule SID ${args.sid} not found in local.rules.` }], isError: true };
+        }
+
+        await writeFile(localRulesPath, lines.join("\n"));
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              status: "updated",
+              sid: args.sid,
+              enabled: args.enable,
+              note: "Run suricata_reload_rules_docker to apply changes.",
+            }, null, 2),
+          }],
+        };
+      } catch (error) {
+        return { content: [{ type: "text" as const, text: `Error toggling rule: ${error}` }], isError: true };
+      }
+    },
+  );
+
+  server.tool(
+    "suricata_reload_rules_docker",
+    "Reload Suricata rules via Docker (suricata-update + SIGUSR2)",
+    {},
+    async () => {
+      try {
+        const cmd = 'docker exec suricata suricata-update && docker exec suricata kill -USR2 $(docker exec suricata cat /var/run/suricata.pid)';
+        const { stdout, stderr } = await execAsync(cmd, { timeout: 60000 });
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              status: "success",
+              stdout: stdout.trim(),
+              stderr: stderr.trim(),
+            }, null, 2),
+          }],
+        };
+      } catch (error) {
+        return { content: [{ type: "text" as const, text: `Error reloading rules: ${error}` }], isError: true };
       }
     },
   );

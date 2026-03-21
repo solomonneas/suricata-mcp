@@ -14,15 +14,22 @@ import { registerRuleTools } from "./tools/rules.js";
 import { registerStatsTools } from "./tools/stats.js";
 import { registerInvestigationTools } from "./tools/investigation.js";
 import { registerBeaconingTools } from "./analytics/beaconing.js";
+import { registerDgaDetectionTools } from "./analytics/dns_entropy.js";
+import { registerExfiltrationTools } from "./analytics/exfiltration.js";
+import { registerLateralMovementTools } from "./analytics/lateral.js";
 import { registerSocketTools } from "./socket/client.js";
+import { registerZeekTools } from "./tools/zeek.js";
+import { registerPcapTools } from "./tools/pcap.js";
+import { registerThreatIntelTools } from "./tools/threatintel.js";
+import { registerCorrelationTools } from "./tools/correlation.js";
 import { registerResources } from "./resources.js";
 import { registerPrompts } from "./prompts.js";
 
 const server = new McpServer({
   name: "suricata-mcp",
-  version: "1.0.0",
+  version: "2.0.0",
   description:
-    "MCP server for Suricata IDS/IPS EVE JSON log analysis and rule management",
+    "MCP server for Suricata IDS/IPS and Zeek NSM log analysis, threat hunting, and incident response",
 });
 
 const config = getConfig();
@@ -53,6 +60,23 @@ registerStatsTools(server, engine);
 
 // Cross-type investigation
 registerInvestigationTools(server, engine);
+
+// Advanced analytics
+registerDgaDetectionTools(server, engine);
+registerExfiltrationTools(server, engine);
+registerLateralMovementTools(server, engine);
+
+// Zeek integration
+registerZeekTools(server, config);
+
+// PCAP management
+registerPcapTools(server, config);
+
+// Threat intel (MISP + TheHive)
+registerThreatIntelTools(server, config);
+
+// Cross-correlation (Suricata + Zeek)
+registerCorrelationTools(server, engine, config);
 
 // Live commands via Unix socket
 registerSocketTools(server, config);

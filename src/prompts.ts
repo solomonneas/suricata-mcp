@@ -92,6 +92,109 @@ export function registerPrompts(server: McpServer): void {
   );
 
   server.prompt(
+    "incident-response",
+    "Full incident response workflow using Suricata alerts, Zeek enrichment, and TheHive case management",
+    {
+      alertSid: z.string().optional().describe("Suricata alert SID to investigate"),
+      hostIp: z.string().optional().describe("Host IP to investigate"),
+    },
+    async (args) => {
+      const startPart = args.alertSid
+        ? `Start by investigating Suricata alert SID ${args.alertSid}.`
+        : args.hostIp
+          ? `Start by investigating host ${args.hostIp}.`
+          : "Start by identifying the highest severity alerts with suricata_top_alerts.";
+
+      return {
+        messages: [
+          {
+            role: "user" as const,
+            content: {
+              type: "text" as const,
+              text: [
+                `Perform a full incident response investigation. ${startPart}`,
+                "",
+                "Follow this IR workflow:",
+                "",
+                "**Phase 1: Detection & Triage**",
+                "1. Query Suricata alerts to understand the scope of the incident.",
+                "2. Use suricata_investigate_host or suricata_investigate_alert for initial context.",
+                "3. Check alert severity, category, and frequency to prioritize.",
+                "",
+                "**Phase 2: Zeek Enrichment**",
+                "4. Use correlate_alert_with_zeek to get full network metadata for the alert.",
+                "5. Check zeek_query_connections for the IP pair to see full connection history.",
+                "6. Check zeek_query_dns for domain resolution context.",
+                "7. Check zeek_query_ssl for TLS details and certificate information.",
+                "8. Check zeek_query_files for any file transfers.",
+                "",
+                "**Phase 3: Threat Intel**",
+                "9. Search MISP for known IOCs (IPs, domains, hashes) using misp_search_ioc.",
+                "10. Check suricata_dga_detection for domain generation algorithm indicators.",
+                "11. Run suricata_beaconing_detection for C2 communication patterns.",
+                "12. Run suricata_exfiltration_detection for data theft indicators.",
+                "",
+                "**Phase 4: Case Management**",
+                "13. Create a TheHive alert with thehive_create_alert including all observables.",
+                "14. If confirmed incident, escalate to a case with thehive_create_case.",
+                "",
+                "**Phase 5: Containment Recommendations**",
+                "15. Based on findings, recommend containment actions:",
+                "    - Block malicious IPs/domains",
+                "    - Isolate affected hosts",
+                "    - Custom Suricata rules to detect variants",
+                "    - Network-level mitigations",
+              ].join("\n"),
+            },
+          },
+        ],
+      };
+    },
+  );
+
+  server.prompt(
+    "network-baseline",
+    "Generate a network baseline report to establish normal traffic patterns",
+    {
+      timeWindow: z.string().optional().describe("Time window for baseline (e.g., '24h', '7d')"),
+    },
+    async (args) => {
+      const timePart = args.timeWindow
+        ? `Analyze traffic from the last ${args.timeWindow}.`
+        : "Analyze traffic from the last 24 hours.";
+
+      return {
+        messages: [
+          {
+            role: "user" as const,
+            content: {
+              type: "text" as const,
+              text: [
+                `Generate a comprehensive network baseline report. ${timePart}`,
+                "",
+                "Include the following sections:",
+                "",
+                "1. **Traffic Volume**: Use suricata_flow_summary and zeek_connection_summary for total bytes, packets, and connection counts.",
+                "2. **Top Talkers**: Identify the most active internal and external hosts.",
+                "3. **Protocol Distribution**: Break down by protocol (TCP/UDP/ICMP) and application protocols.",
+                "4. **Service Map**: What services are running internally? (ports, protocols)",
+                "5. **DNS Baseline**: Top queried domains, query types, response codes from both Suricata and Zeek DNS logs.",
+                "6. **TLS Landscape**: TLS versions in use, top certificate issuers, JA3 fingerprint distribution.",
+                "7. **SSH Activity**: Internal SSH connections, client/server software versions.",
+                "8. **Alert Baseline**: Normal alert volume, expected signatures (info-level vs actionable).",
+                "9. **Anomaly Detection**: Run suricata_dga_detection, suricata_beaconing_detection, suricata_exfiltration_detection, and suricata_lateral_movement_detection.",
+                "10. **Recommendations**: What looks normal vs what needs investigation.",
+                "",
+                "Format as a structured report suitable for a SOC team to use as a reference baseline.",
+              ].join("\n"),
+            },
+          },
+        ],
+      };
+    },
+  );
+
+  server.prompt(
     "daily-alert-report",
     "Generate a daily alert summary report",
     {

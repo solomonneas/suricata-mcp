@@ -4,6 +4,7 @@ import type { SuricataConfig } from "./config.js";
 import type { StatsEvent } from "./types.js";
 import { loadAllRules } from "./parser/rules.js";
 import { aggregate } from "./query/aggregation.js";
+import { readdir } from "node:fs/promises";
 
 export function registerResources(
   server: McpServer,
@@ -110,6 +111,72 @@ export function registerResources(
           }],
         };
       }
+    },
+  );
+
+  server.resource(
+    "config",
+    "suricata://config",
+    async () => {
+      const sanitized = {
+        evePath: config.evePath,
+        eveArchiveDir: config.eveArchiveDir,
+        rulesDir: config.rulesDir,
+        maxResults: config.maxResults,
+        unixSocket: config.unixSocket ? "(configured)" : null,
+        zeekLogsDir: config.zeekLogsDir,
+        pcapDir: config.pcapDir,
+        mispUrl: config.mispUrl ? "(configured)" : null,
+        thehiveUrl: config.thehiveUrl ? "(configured)" : null,
+      };
+      return {
+        contents: [{
+          uri: "suricata://config",
+          mimeType: "application/json",
+          text: JSON.stringify(sanitized, null, 2),
+        }],
+      };
+    },
+  );
+
+  server.resource(
+    "zeek-log-types",
+    "zeek://log-types",
+    async () => {
+      const logTypes = [
+        { log: "conn.log", description: "TCP/UDP/ICMP connection records", keyFields: "id.orig_h, id.resp_h, id.orig_p, id.resp_p, proto, service, duration, orig_bytes, resp_bytes, conn_state" },
+        { log: "dns.log", description: "DNS queries and responses", keyFields: "query, qtype_name, rcode_name, answers, TTLs" },
+        { log: "http.log", description: "HTTP request/response details", keyFields: "method, host, uri, user_agent, status_code, resp_mime_types" },
+        { log: "ssl.log", description: "TLS/SSL handshake metadata", keyFields: "version, cipher, server_name, resumed, established, cert_chain_fps" },
+        { log: "files.log", description: "File analysis results", keyFields: "source, mime_type, filename, md5, sha1, sha256, seen_bytes" },
+        { log: "ssh.log", description: "SSH handshake and auth info", keyFields: "version, auth_success, auth_attempts, client, server, cipher_alg" },
+        { log: "weird.log", description: "Protocol anomalies", keyFields: "name, addl, notice, peer, source" },
+        { log: "x509.log", description: "X.509 certificate details", keyFields: "certificate.version, certificate.serial, certificate.subject, certificate.issuer" },
+        { log: "notice.log", description: "Zeek notices and alerts", keyFields: "note, msg, sub, src, dst, p, n" },
+        { log: "dhcp.log", description: "DHCP transactions", keyFields: "mac, assigned_addr, lease_time, host_name" },
+        { log: "ntp.log", description: "NTP activity", keyFields: "version, mode, stratum, ref_id" },
+      ];
+
+      // Check which logs actually exist
+      let availableLogs: string[] = [];
+      if (config.zeekLogsDir) {
+        try {
+          availableLogs = await readdir(config.zeekLogsDir);
+        } catch { /* ignore */ }
+      }
+
+      const enriched = logTypes.map((lt) => ({
+        ...lt,
+        available: availableLogs.includes(lt.log),
+      }));
+
+      return {
+        contents: [{
+          uri: "zeek://log-types",
+          mimeType: "application/json",
+          text: JSON.stringify(enriched, null, 2),
+        }],
+      };
     },
   );
 }

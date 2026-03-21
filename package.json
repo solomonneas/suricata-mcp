@@ -1,6 +1,6 @@
 {
   "name": "suricata-mcp",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "MCP server for Suricata IDS/IPS EVE JSON log analysis and rule management",
   "type": "module",
   "main": "dist/index.js",

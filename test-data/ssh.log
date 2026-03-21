@@ -1,0 +1,10 @@
+#separator \x09
+#set_separator	,
+#empty_field	(empty)
+#unset_field	-
+#path	ssh
+#open	2025-01-15-10-00-00
+#fields	ts	uid	id.orig_h	id.orig_p	id.resp_h	id.resp_p	version	auth_success	auth_attempts	direction	client	server	cipher_alg	mac_alg	compression_alg	kex_alg	host_key_alg	host_key_fingerprint
+#types	time	string	addr	port	addr	port	count	bool	count	enum	string	string	string	string	string	string	string	string
+1736935320.000000	CgHI3j4k5l6m7n8o9p	172.16.0.5	12345	192.168.1.100	22	2	T	1	INBOUND	SSH-2.0-OpenSSH_9.6	SSH-2.0-OpenSSH_9.7	chacha20-poly1305@openssh.com	umac-64-etm@openssh.com	none	curve25519-sha256	ssh-ed25519	abc:def:123:456
+1736935400.000000	CkLM5n6o7p8q9r0s1t	192.168.1.10	22226	192.168.1.100	22	2	F	3	INBOUND	SSH-2.0-PuTTY_Release_0.78	SSH-2.0-OpenSSH_9.7	aes256-ctr	hmac-sha2-256	none	diffie-hellman-group14-sha256	ssh-rsa	789:abc:def:012

@@ -1,0 +1,20 @@
+#separator \x09
+#set_separator	,
+#empty_field	(empty)
+#unset_field	-
+#path	conn
+#open	2025-01-15-10-00-00
+#fields	ts	uid	id.orig_h	id.orig_p	id.resp_h	id.resp_p	proto	service	duration	orig_bytes	resp_bytes	conn_state	local_orig	local_resp	missed_bytes	history	orig_pkts	orig_ip_bytes	resp_pkts	resp_ip_bytes	tunnel_parents	ip_proto
+#types	time	string	addr	port	addr	port	enum	string	interval	count	count	string	bool	bool	count	string	count	count	count	count	set[string]	count
+1736935200.000000	CaBC1d2d3e4f5g6h7i	192.168.1.100	54321	10.0.0.50	443	tcp	ssl	120.500000	15000	250000	SF	T	F	0	ShADadFf	50	17000	80	254000	-	6
+1736935260.000000	CdEF2g3h4i5j6k7l8m	192.168.1.100	54322	10.0.0.51	8080	tcp	http	5.200000	1200	8500	SF	T	F	0	ShADadFf	10	1500	15	9000	-	6
+1736935320.000000	CgHI3j4k5l6m7n8o9p	172.16.0.5	12345	192.168.1.100	22	tcp	ssh	600.000000	50000	45000	SF	T	T	0	ShADadFf	200	52000	180	47000	-	6
+1736935380.000000	CjKL4m5n6o7p8q9r0s	192.168.1.100	55555	93.184.216.34	443	tcp	ssl	2.100000	500	12000	SF	T	F	0	ShADadFf	8	700	20	12500	-	6
+1736935440.000000	CmNO5p6q7r8s9t0u1v	192.168.1.200	60000	185.220.101.1	443	tcp	ssl	300.000000	500000	250000	SF	T	F	0	ShADadFf	400	505000	350	255000	-	6
+1736935500.000000	CpQR6s7t8u9v0w1x2y	192.168.1.50	33333	10.0.0.50	53	udp	dns	0.050000	100	200	SF	T	F	0	Dd	2	128	2	228	-	17
+1736935560.000000	CsTU7v8w9x0y1z2a3b	192.168.1.100	44444	10.0.0.50	80	tcp	http	1.500000	800	5000	SF	T	F	0	ShADadFf	5	1000	8	5200	-	6
+1736935620.000000	CvWX8y9z0a1b2c3d4e	192.168.1.10	22222	192.168.1.20	445	tcp	-	0.100000	200	0	REJ	T	T	0	Sr	1	240	1	40	-	6
+1736935680.000000	CyZA9b0c1d2e3f4g5h	192.168.1.10	22223	192.168.1.50	3389	tcp	-	0.100000	200	0	REJ	T	T	0	Sr	1	240	1	40	-	6
+1736935740.000000	CbCD0e1f2g3h4i5j6k	192.168.1.10	22224	192.168.1.150	8443	tcp	-	0.100000	200	0	REJ	T	T	0	Sr	1	240	1	40	-	6
+1736935800.000000	CeFG1h2i3j4k5l6m7n	192.168.1.10	22225	192.168.1.200	9090	tcp	-	0.100000	200	0	S0	T	T	0	S	1	240	0	0	-	6
+1736935860.000000	ChIJ2k3l4m5n6o7p8q	10.0.1.5	11111	93.184.216.34	80	tcp	http	3.000000	2000	15000	SF	F	F	0	ShADadFf	15	2300	25	15500	-	6
