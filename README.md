@@ -59,12 +59,13 @@ Set environment variables to point at your NIDS installation:
 
 ### Claude Desktop
 
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+
 ```json
 {
   "mcpServers": {
     "suricata": {
-      "command": "node",
-      "args": ["/path/to/suricata-mcp/dist/index.js"],
+      "command": "suricata-mcp",
       "env": {
         "SURICATA_EVE_LOG": "/opt/nids/suricata/logs/eve.json",
         "SURICATA_RULES_DIR": "/opt/nids/suricata/rules",
@@ -78,6 +79,115 @@ Set environment variables to point at your NIDS installation:
     }
   }
 }
+```
+
+### Claude Code
+
+```bash
+claude mcp add suricata \
+  --env SURICATA_EVE_LOG=/opt/nids/suricata/logs/eve.json \
+  --env SURICATA_RULES_DIR=/opt/nids/suricata/rules \
+  --env ZEEK_LOGS_DIR=/opt/nids/zeek/logs \
+  -- suricata-mcp
+```
+
+Add `--scope user` to make it available from any directory instead of only the current project.
+
+### OpenClaw
+
+If you're running from a source checkout instead of the npm-installed binary, point `command`/`args` at the built `dist/index.js`:
+
+```bash
+openclaw mcp set suricata '{
+  "command": "node",
+  "args": ["/absolute/path/to/suricata-mcp/dist/index.js"],
+  "env": {
+    "SURICATA_EVE_LOG": "/opt/nids/suricata/logs/eve.json",
+    "SURICATA_RULES_DIR": "/opt/nids/suricata/rules",
+    "ZEEK_LOGS_DIR": "/opt/nids/zeek/logs"
+  }
+}'
+```
+
+Or, with the global npm install:
+
+```bash
+openclaw mcp set suricata '{
+  "command": "suricata-mcp",
+  "env": {
+    "SURICATA_EVE_LOG": "/opt/nids/suricata/logs/eve.json",
+    "SURICATA_RULES_DIR": "/opt/nids/suricata/rules",
+    "ZEEK_LOGS_DIR": "/opt/nids/zeek/logs"
+  }
+}'
+```
+
+Then restart the OpenClaw gateway so the new server is picked up:
+
+```bash
+systemctl --user restart openclaw-gateway
+openclaw mcp list   # confirm "suricata" is registered
+```
+
+### Hermes Agent
+
+[Hermes Agent](https://github.com/NousResearch/hermes-agent) reads MCP config from `~/.hermes/config.yaml` under the `mcp_servers` key. Add an entry:
+
+```yaml
+mcp_servers:
+  suricata:
+    command: "suricata-mcp"
+    env:
+      SURICATA_EVE_LOG: "/opt/nids/suricata/logs/eve.json"
+      SURICATA_RULES_DIR: "/opt/nids/suricata/rules"
+      ZEEK_LOGS_DIR: "/opt/nids/zeek/logs"
+```
+
+Or, when running from a source checkout instead of the global npm install:
+
+```yaml
+mcp_servers:
+  suricata:
+    command: "node"
+    args: ["/absolute/path/to/suricata-mcp/dist/index.js"]
+    env:
+      SURICATA_EVE_LOG: "/opt/nids/suricata/logs/eve.json"
+      SURICATA_RULES_DIR: "/opt/nids/suricata/rules"
+      ZEEK_LOGS_DIR: "/opt/nids/zeek/logs"
+```
+
+Then reload MCP from inside a Hermes session:
+
+```
+/reload-mcp
+```
+
+### Codex CLI
+
+[Codex CLI](https://github.com/openai/codex) registers MCP servers via `codex mcp add`:
+
+```bash
+codex mcp add suricata \
+  --env SURICATA_EVE_LOG=/opt/nids/suricata/logs/eve.json \
+  --env SURICATA_RULES_DIR=/opt/nids/suricata/rules \
+  --env ZEEK_LOGS_DIR=/opt/nids/zeek/logs \
+  -- suricata-mcp
+```
+
+Or, when running from a source checkout:
+
+```bash
+codex mcp add suricata \
+  --env SURICATA_EVE_LOG=/opt/nids/suricata/logs/eve.json \
+  --env SURICATA_RULES_DIR=/opt/nids/suricata/rules \
+  --env ZEEK_LOGS_DIR=/opt/nids/zeek/logs \
+  -- node /absolute/path/to/suricata-mcp/dist/index.js
+```
+
+Codex writes the entry to `~/.codex/config.toml` under `[mcp_servers.suricata]`. Verify with:
+
+```bash
+codex mcp list
 ```
 
 ### Standalone
