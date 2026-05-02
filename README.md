@@ -1,9 +1,19 @@
-# Suricata MCP Server
+<p align="center">
+  <img src="docs/assets/suricata-mcp-banner.jpg" alt="Watercolor EVE alert triage desk for suricata-mcp" width="100%" />
+</p>
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-20%2B-green?logo=node.js)](https://nodejs.org/)
-[![MCP](https://img.shields.io/badge/MCP-1.x-purple)](https://modelcontextprotocol.io/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+<h1 align="center">suricata-mcp</h1>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/suricata-mcp"><img src="https://img.shields.io/npm/v/suricata-mcp?style=flat-square&logo=npm&color=cb3837" alt="npm version" /></a>
+  <a href="https://github.com/solomonneas/suricata-mcp/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/solomonneas/suricata-mcp/ci.yml?branch=main&style=flat-square&label=CI&logo=github" alt="CI status" /></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-6.0-3178c6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript 6.0" /></a>
+  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-20%2B-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js 20+" /></a>
+  <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP%20SDK-1.29-6f42c1?style=flat-square" alt="MCP SDK 1.29" /></a>
+  <a href="https://suricata.io/"><img src="https://img.shields.io/badge/Suricata-IDS%2FIPS-f15a24?style=flat-square" alt="Suricata IDS/IPS" /></a>
+  <a href="https://zeek.org/"><img src="https://img.shields.io/badge/Zeek-NSM-00aeef?style=flat-square" alt="Zeek NSM correlation" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT license" /></a>
+</p>
 
 An MCP (Model Context Protocol) server for network security monitoring. Provides intelligent analysis of Suricata IDS/IPS and Zeek NSM logs, cross-correlation between sensors, threat intelligence integration (MISP + TheHive), PCAP replay, and advanced analytics including DGA detection, C2 beaconing, data exfiltration, and lateral movement detection.
 
