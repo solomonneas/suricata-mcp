@@ -529,6 +529,41 @@ describe("Mutation Gating", () => {
     expect(noConfirm.content[0].text).toContain("confirm");
     expect(await readFile(localPath, "utf-8")).toBe(rule + "\n");
   });
+
+  it("disables and re-enables a temporary rule when confirm is true", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "suricata-toggle-allowed-"));
+    const rule = 'alert tcp any any -> any any (msg:"toggle-allowed"; sid:1000002; rev:1;)';
+    const localPath = join(dir, "local.rules");
+    await writeFile(localPath, rule + "\n");
+
+    const server = new McpServer({ name: "test", version: "1.0.0" });
+    const tools = captureTools(server);
+    registerRuleTools(server, createTestConfig({ rulesDir: dir, allowMutation: true }));
+
+    const disabled = await tools.get("suricata_toggle_rule")!({
+      sid: 1000002,
+      enable: false,
+      confirm: true,
+    });
+    expect(disabled.isError).not.toBe(true);
+    const disabledData = JSON.parse(disabled.content[0].text);
+    expect(disabledData.status).toBe("updated");
+    expect(disabledData.sid).toBe(1000002);
+    expect(disabledData.enabled).toBe(false);
+    expect(await readFile(localPath, "utf-8")).toBe("# " + rule + "\n");
+
+    const enabled = await tools.get("suricata_toggle_rule")!({
+      sid: 1000002,
+      enable: true,
+      confirm: true,
+    });
+    expect(enabled.isError).not.toBe(true);
+    const enabledData = JSON.parse(enabled.content[0].text);
+    expect(enabledData.status).toBe("updated");
+    expect(enabledData.sid).toBe(1000002);
+    expect(enabledData.enabled).toBe(true);
+    expect(await readFile(localPath, "utf-8")).toBe(rule + "\n");
+  });
 });
 
 describe("PCAP Mutation Gating", () => {

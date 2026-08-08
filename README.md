@@ -349,6 +349,7 @@ acting. The gated tools are:
 - `suricata_create_rule` - appends to `local.rules`. Additionally enforces a
   local SID range (`sid >= 1000000`) and rejects SIDs that collide with the
   loaded ruleset.
+- `suricata_toggle_rule` - enables or disables a rule by SID in `local.rules`.
 - `suricata_reload_rules_docker` - runs `suricata-update` + `SIGUSR2` against the
   live container.
 - `pcap_replay_suricata` / `pcap_replay_zeek` - replay a PCAP through the engine.
