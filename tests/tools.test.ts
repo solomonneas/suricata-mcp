@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { resolve } from "node:path";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SuricataConfig } from "../src/config.js";
 import { QueryEngine } from "../src/query/engine.js";
@@ -473,6 +475,94 @@ describe("Mutation Gating", () => {
     const result = await tools.get("suricata_reload_rules_docker")!({ confirm: true });
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain("SURICATA_ALLOW_MUTATION");
+  });
+
+  it("refuses suricata_toggle_rule when mutation is disabled", async () => {
+    const tools = rulesWith({ allowMutation: false });
+    const result = await tools.get("suricata_toggle_rule")!({
+      sid: 1000001,
+      enable: false,
+      confirm: true,
+    });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("SURICATA_ALLOW_MUTATION");
+  });
+
+  it("refuses suricata_toggle_rule without confirm", async () => {
+    const tools = rulesWith({ allowMutation: true });
+    const result = await tools.get("suricata_toggle_rule")!({
+      sid: 1000001,
+      enable: false,
+    });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("confirm");
+  });
+
+  it("does not read or write local.rules when suricata_toggle_rule mutation is refused", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "suricata-toggle-"));
+    const rule = 'alert tcp any any -> any any (msg:"gate-test"; sid:1000001; rev:1;)';
+    const localPath = join(dir, "local.rules");
+    await writeFile(localPath, rule + "\n");
+
+    const server = new McpServer({ name: "test", version: "1.0.0" });
+    const tools = captureTools(server);
+    registerRuleTools(server, createTestConfig({ rulesDir: dir, allowMutation: false }));
+
+    const disabled = await tools.get("suricata_toggle_rule")!({
+      sid: 1000001,
+      enable: false,
+      confirm: true,
+    });
+    expect(disabled.isError).toBe(true);
+    expect(disabled.content[0].text).toContain("SURICATA_ALLOW_MUTATION");
+    expect(await readFile(localPath, "utf-8")).toBe(rule + "\n");
+
+    const server2 = new McpServer({ name: "test", version: "1.0.0" });
+    const tools2 = captureTools(server2);
+    registerRuleTools(server2, createTestConfig({ rulesDir: dir, allowMutation: true }));
+
+    const noConfirm = await tools2.get("suricata_toggle_rule")!({
+      sid: 1000001,
+      enable: false,
+    });
+    expect(noConfirm.isError).toBe(true);
+    expect(noConfirm.content[0].text).toContain("confirm");
+    expect(await readFile(localPath, "utf-8")).toBe(rule + "\n");
+  });
+
+  it("disables and re-enables a temporary rule when confirm is true", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "suricata-toggle-allowed-"));
+    const rule = 'alert tcp any any -> any any (msg:"toggle-allowed"; sid:1000002; rev:1;)';
+    const localPath = join(dir, "local.rules");
+    await writeFile(localPath, rule + "\n");
+
+    const server = new McpServer({ name: "test", version: "1.0.0" });
+    const tools = captureTools(server);
+    registerRuleTools(server, createTestConfig({ rulesDir: dir, allowMutation: true }));
+
+    const disabled = await tools.get("suricata_toggle_rule")!({
+      sid: 1000002,
+      enable: false,
+      confirm: true,
+    });
+    expect(disabled.isError).not.toBe(true);
+    const disabledData = JSON.parse(disabled.content[0].text);
+    expect(disabledData.status).toBe("updated");
+    expect(disabledData.sid).toBe(1000002);
+    expect(disabledData.enabled).toBe(false);
+    expect(await readFile(localPath, "utf-8")).toBe("# " + rule + "\n");
+
+    const enabled = await tools.get("suricata_toggle_rule")!({
+      sid: 1000002,
+      enable: true,
+      confirm: true,
+    });
+    expect(enabled.isError).not.toBe(true);
+    const enabledData = JSON.parse(enabled.content[0].text);
+    expect(enabledData.status).toBe("updated");
+    expect(enabledData.sid).toBe(1000002);
+    expect(enabledData.enabled).toBe(true);
+    expect(await readFile(localPath, "utf-8")).toBe(rule + "\n");
   });
 });
 

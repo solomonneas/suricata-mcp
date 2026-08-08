@@ -179,15 +179,21 @@ export function registerRuleTools(
 
   server.tool(
     "suricata_toggle_rule",
-    "Enable or disable a Suricata rule by SID in local.rules",
+    "Enable or disable a Suricata rule by SID in local.rules (mutating; requires SURICATA_ALLOW_MUTATION=1 and confirm:true)",
     {
       sid: z.number().describe("Rule SID to toggle"),
       enable: z.boolean().describe("true to enable, false to disable"),
+      confirm: z.boolean().optional().describe("Must be true to toggle the rule (destructive opt-in)"),
     },
     async (args) => {
       try {
         if (!config.rulesDir) {
           return { content: [{ type: "text" as const, text: "Rules directory not configured. Set SURICATA_RULES_DIR." }], isError: true };
+        }
+
+        const gate = checkMutationAllowed(config, args, "toggle a Suricata rule");
+        if (!gate.allowed) {
+          return gate.response;
         }
 
         const localRulesPath = join(config.rulesDir, "local.rules");
