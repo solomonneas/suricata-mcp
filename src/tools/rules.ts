@@ -2,15 +2,12 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { readFile, writeFile, appendFile } from "node:fs/promises";
 import { join } from "node:path";
-import { exec as execCb } from "node:child_process";
-import { promisify } from "node:util";
 import type { SuricataConfig } from "../config.js";
 import { loadAllRules } from "../parser/rules.js";
 import { matchesPartial } from "../query/filters.js";
 import { aggregate } from "../query/aggregation.js";
 import { checkMutationAllowed } from "./mutation.js";
-
-const execAsync = promisify(execCb);
+import { execAsync } from "./exec.js";
 
 // Local rule SIDs must live in the operator-assigned range to avoid clobbering
 // vendor/ET rule SIDs. 1,000,000+ is the conventional local range.

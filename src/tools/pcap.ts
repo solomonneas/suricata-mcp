@@ -1,13 +1,10 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { exec as execCb } from "node:child_process";
 import { readdir, stat } from "node:fs/promises";
 import { join, basename } from "node:path";
-import { promisify } from "node:util";
 import type { SuricataConfig } from "../config.js";
 import { checkMutationAllowed } from "./mutation.js";
-
-const execAsync = promisify(execCb);
+import { execAsync } from "./exec.js";
 
 // Cap the number of replays running at once so a flood of requests can't
 // exhaust host resources by spawning unbounded `docker exec` processes.
