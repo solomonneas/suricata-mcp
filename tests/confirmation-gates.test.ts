@@ -1,10 +1,22 @@
-import { describe, it, expect } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SuricataConfig } from "../src/config.js";
 import { checkMutationAllowed } from "../src/tools/mutation.js";
+import { execAsync } from "../src/tools/exec.js";
+
+vi.mock("../src/tools/exec.js", () => ({
+  execAsync: vi.fn(),
+}));
+
+const execMock = vi.mocked(execAsync);
+
+beforeEach(() => {
+  execMock.mockReset().mockResolvedValue({ stdout: "", stderr: "" });
+});
+
 import { registerRuleTools } from "../src/tools/rules.js";
 import { registerPcapTools } from "../src/tools/pcap.js";
 
@@ -270,45 +282,81 @@ describe("Confirmation gates on destructive tools", () => {
       confirm: true,
     });
 
-    // Gate passed: failure is from docker/shell, not the confirmation gate.
-    expect(result.content[0].text).not.toContain("destructive operation");
-    expect(result.content[0].text).not.toContain("mutating tools are disabled");
+    expect(result.isError).not.toBe(true);
+    expect(execMock).toHaveBeenCalledTimes(1);
+    expect(execMock.mock.calls[0][0]).toContain("suricata-update");
+    const data = JSON.parse(result.content[0].text);
+    expect(data.status).toBe("success");
+  });
+
+  it("suricata_reload_rules_docker never shells out when unconfirmed", async () => {
+    const tools = registerGatedTool(
+      "suricata_reload_rules_docker",
+      createTestConfig({ allowMutation: true }),
+    );
+
+    const result = await tools.get("suricata_reload_rules_docker")!({});
+
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain("Error reloading rules");
+    expectConfirmGateError(result.content[0].text);
+    expect(execMock).not.toHaveBeenCalled();
+  });
+
+  it("suricata_reload_rules_docker never shells out when mutation is disabled", async () => {
+    const tools = registerGatedTool(
+      "suricata_reload_rules_docker",
+      createTestConfig({ allowMutation: false }),
+    );
+
+    const result = await tools.get("suricata_reload_rules_docker")!({
+      confirm: true,
+    });
+
+    expect(result.isError).toBe(true);
+    expectMutationDisabledError(result.content[0].text);
+    expect(execMock).not.toHaveBeenCalled();
   });
 
   it("pcap_replay_suricata proceeds past the gate when confirmed", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "suricata-pcap-gate-"));
+    await writeFile(join(dir, "gate-test.pcap"), "");
+
     const tools = registerGatedTool(
       "pcap_replay_suricata",
-      createTestConfig({ pcapDir: TEST_DATA_DIR, allowMutation: true }),
+      createTestConfig({ pcapDir: dir, allowMutation: true }),
     );
 
     const result = await tools.get("pcap_replay_suricata")!({
-      filename: "definitely-missing-gate-test.pcap",
+      filename: "gate-test.pcap",
       confirm: true,
     });
 
-    expect(result.content[0].text).not.toContain("destructive operation");
-    expect(result.content[0].text).not.toContain("mutating tools are disabled");
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain("PCAP file not found");
+    expect(result.isError).not.toBe(true);
+    expect(execMock).toHaveBeenCalledTimes(1);
+    expect(execMock.mock.calls[0][0]).toContain("gate-test.pcap");
+    const data = JSON.parse(result.content[0].text);
+    expect(data.status).toBe("completed");
   });
 
   it("pcap_replay_zeek proceeds past the gate when confirmed", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "zeek-pcap-gate-"));
+    await writeFile(join(dir, "gate-test.pcap"), "");
+
     const tools = registerGatedTool(
       "pcap_replay_zeek",
-      createTestConfig({ pcapDir: TEST_DATA_DIR, allowMutation: true }),
+      createTestConfig({ pcapDir: dir, allowMutation: true }),
     );
 
     const result = await tools.get("pcap_replay_zeek")!({
-      filename: "definitely-missing-gate-test.pcap",
+      filename: "gate-test.pcap",
       confirm: true,
     });
 
-    expect(result.content[0].text).not.toContain("destructive operation");
-    expect(result.content[0].text).not.toContain("mutating tools are disabled");
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain("PCAP file not found");
+    expect(result.isError).not.toBe(true);
+    expect(execMock).toHaveBeenCalledTimes(1);
+    expect(execMock.mock.calls[0][0]).toContain("gate-test.pcap");
+    const data = JSON.parse(result.content[0].text);
+    expect(data.status).toBe("completed");
   });
 
   it("pcap_replay_zeek is blocked when mutation is disabled", async () => {
